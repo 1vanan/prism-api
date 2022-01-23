@@ -26,14 +26,7 @@
 
 package demos;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.util.Arrays;
-import java.util.List;
-
 import parser.State;
-import parser.VarList;
-import parser.ast.Declaration;
 import parser.ast.DeclarationInt;
 import parser.ast.DeclarationType;
 import parser.ast.Expression;
@@ -44,9 +37,13 @@ import prism.ModelType;
 import prism.Prism;
 import prism.PrismDevNullLog;
 import prism.PrismException;
-import prism.PrismLangException;
 import prism.PrismLog;
 import prism.RewardGenerator;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * An example class demonstrating how to control PRISM programmatically,
@@ -77,7 +74,7 @@ public class DTMCModelGenerator
 
 			// Create a model generator to specify the model that PRISM should build
 			// (in this case a simple random walk)
-			RandomWalk modelGen = new RandomWalk(5, 0.6);
+			RandomWalk modelGen = new RandomWalk(7, 0.5);
 			
 			// Load the model generator into PRISM,
 			// export the model to a dot file (which triggers its construction)
@@ -238,6 +235,7 @@ public class DTMCModelGenerator
 				// Self-loop
 				return target;
 			} else {
+				System.out.println("~~!: " + (offset == 0));
 				return target.setValue(0, offset == 0 ? x - 1 : x + 1);
 			}
 		}
