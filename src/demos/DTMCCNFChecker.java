@@ -42,14 +42,16 @@ public class DTMCCNFChecker {
             // Create a list of arrays, each of which defines a literal from CNF specification.
             // For example, 3 organizations, and CNF: (o1 & o2) || (o2 & o3). Then arrays will be:
             // [1, 1, 0]; [0, 1, 1]
+            List<List<String>> literals = new ArrayList<>();
+
             List<int[]> spec = new ArrayList<>();
-            spec.add(new int[]{1, 1});
+            spec.add(new int[]{1, 1, 1});
 
             // List of probabilities for each organization. Goes in the same order
-            List<Double> probabilities = Arrays.asList(0.5, 0.5);
+            List<Double> probabilities = Arrays.asList(0.5, 0.5, 0.5);
 
             // Create a model generator to specify the model that PRISM should build
-            CNFCheck modelGen = new CNFCheck(2, probabilities, spec);
+            CNFCheck modelGen = new CNFCheck(probabilities, spec);
 
             // Load the model generator into PRISM,
             // export the model to a dot file (which triggers its construction)
@@ -91,7 +93,7 @@ public class DTMCCNFChecker {
         // Current value of x
         private int x;
         // replied of organizations. 1 - confirmation, 0 - refusal
-        public int testArr[];
+        public int responses[];
         List<int[]> scpec;
 
         /**
@@ -101,12 +103,12 @@ public class DTMCCNFChecker {
          * @param probabilities Probability of each organization to give a confirmation response
          * @param scpec List of arrays, where each array represents a literal from the CNF
          */
-        public CNFCheck(int n, List<Double> probabilities, List<int[]> scpec) {
-            this.n = n;
+        public CNFCheck(List<Double> probabilities, List<int[]> scpec) {
+            this.n = probabilities.size();
             this.probabilities = probabilities;
             this.scpec = scpec;
 
-            testArr = new int[n];
+            responses = new int[n];
         }
 
         // Methods for ModelInfo interface
@@ -135,7 +137,7 @@ public class DTMCCNFChecker {
 
         @Override
         public DeclarationType getVarDeclarationType(int i) {
-            return new DeclarationInt(Expression.Int(0), Expression.Int(n));
+            return new DeclarationInt(Expression.Int(-1), Expression.Int(n));
 
         }
 
@@ -148,10 +150,12 @@ public class DTMCCNFChecker {
 
         @Override
         public State getInitialState() throws PrismException {
-            State initialState = new State(3);
+            State initialState = new State(n+1);
 
-            for (int i = 0; i <= n; i++) {
-                initialState.setValue(i, 0);
+            initialState.setValue(0, 0);
+
+            for (int i = 1; i <= n; i++) {
+                initialState.setValue(i, -1);
             }
 
             return initialState;
@@ -165,7 +169,7 @@ public class DTMCCNFChecker {
             x = (Integer) exploreState.varValues[0];
 
             for (int i = 0; i < n; i++) {
-                testArr[i] = (Integer) exploreState.varValues[i + 1];
+                responses[i] = (Integer) exploreState.varValues[i + 1];
             }
         }
 
@@ -220,7 +224,7 @@ public class DTMCCNFChecker {
             boolean containsOne = false;
 
             for (int[] ints : scpec) {
-                if (Arrays.equals(ints, testArr)) {
+                if (Arrays.equals(ints, responses)) {
                     containsOne = true;
                     break;
                 }
