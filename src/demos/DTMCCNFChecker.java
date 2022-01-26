@@ -215,6 +215,13 @@ public class DTMCCNFChecker {
                 // Self-loop
                 return target;
             } else {
+                /*
+                TODO: add here backward transition if offset and x == state for b.t. i.e. setValue(0, 0)
+                for (int i = 1; i <= n; i++) {
+                initialState.setValue(i, -1);
+                    }
+                 accept in the constructor as an additional parameter all possible combinations of b.t.
+                 */
                 return target.setValue(0, x + 1).setValue(x + 1, offset == 0 ? 0 : 1);
             }
         }
