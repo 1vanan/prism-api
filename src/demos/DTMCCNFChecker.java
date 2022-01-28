@@ -26,7 +26,7 @@ import java.util.List;
 
 public class DTMCCNFChecker {
     public static void main(String[] args) {
-        for (String s:
+        for (String s :
                 args) {
             System.out.println(s);
         }
@@ -46,17 +46,24 @@ public class DTMCCNFChecker {
             // Create a list of arrays, each of which defines a literal from CNF specification.
             // For example, 3 organizations, and CNF: (o1 & o2) || (o2 & o3). Then arrays will be:
             // [1, 1, 0]; [0, 1, 1]
+            // 1 - acceptance response of ith organization
+            // 0 - rejection response  of ith organization
             List<List<String>> literals = new ArrayList<>();
 
             List<int[]> spec = new ArrayList<>();
-            spec.add(new int[]{1, 1, 0});
+            // "org1 AND org2"
             spec.add(new int[]{1, 1, 1});
 
-            // List of probabilities for each organization. Goes in the same order
+            List<int[]> backwards = new ArrayList<>();
+            backwards.add(new int[]{1, -1, -1});
+//            backwards.add(new int[]{1, 1, -1});
+//            backwards.add(new int[]{1, 0, -1});
+
+            // List of acceptance probabilities for each organization.
             List<Double> probabilities = Arrays.asList(0.5, 0.5, 0.5);
 
             // Create a model generator to specify the model that PRISM should build
-            CNFCheck modelGen = new CNFCheck(probabilities, spec);
+            CNFCheck modelGen = new CNFCheck(probabilities, spec, backwards);
 
             // Load the model generator into PRISM,
             // export the model to a dot file (which triggers its construction)
@@ -65,7 +72,8 @@ public class DTMCCNFChecker {
 
             // Then do some model checking and print the result
             String[] props = new String[]{
-                    "P=?[F \"goal\"]"
+                    "P=?[F \"goal\"]",
+                    "R=?[F \"end\"]"
             };
             for (String prop : props) {
                 System.out.println(prop + ":");
@@ -98,20 +106,22 @@ public class DTMCCNFChecker {
         // Current value of x
         private int x;
         // replied of organizations. 1 - confirmation, 0 - refusal
-        public int responses[];
+        public int[] responses;
         List<int[]> scpec;
+        List<int[]> backwards;
 
         /**
          * Construct a new model generator
          *
-         * @param n Number of organizations
+         * @param n             Number of organizations
          * @param probabilities Probability of each organization to give a confirmation response
-         * @param scpec List of arrays, where each array represents a literal from the CNF
+         * @param scpec         List of arrays, where each array represents a literal from the CNF
          */
-        public CNFCheck(List<Double> probabilities, List<int[]> scpec) {
+        public CNFCheck(List<Double> probabilities, List<int[]> scpec, List<int[]> backwards) {
             this.n = probabilities.size();
             this.probabilities = probabilities;
             this.scpec = scpec;
+            this.backwards = backwards;
 
             responses = new int[n];
         }
@@ -148,14 +158,17 @@ public class DTMCCNFChecker {
 
         @Override
         public List<String> getLabelNames() {
-            return Arrays.asList("goal");
+            List<String> names = new ArrayList<>(2);
+            names.add("goal");
+            names.add("end");
+            return names;
         }
 
         // Methods for ModelGenerator interface (rather than superclass ModelInfo)
 
         @Override
         public State getInitialState() throws PrismException {
-            State initialState = new State(n+1);
+            State initialState = new State(n + 1);
 
             initialState.setValue(0, 0);
 
@@ -220,30 +233,51 @@ public class DTMCCNFChecker {
                 // Self-loop
                 return target;
             } else {
-                /*
-                TODO: add here backward transition if offset and x == state for b.t. i.e. setValue(0, 0)
-                for (int i = 1; i <= n; i++) {
-                initialState.setValue(i, -1);
+                boolean isBackwardTransition = false;
+
+                for (int[] ints : backwards) {
+                    if (Arrays.equals(ints, responses)) {
+                        isBackwardTransition = true;
+                        break;
                     }
-                 accept in the constructor as an additional parameter all possible combinations of b.t.
-                 */
+                }
+
+                if (isBackwardTransition && offset == 0) {
+                    // come back to the root
+                    target.setValue(0, 0);
+
+                    for (int j = 1; j <= n; j++) {
+                        target.setValue(j, -1);
+                    }
+
+                    return target;
+                }
                 return target.setValue(0, x + 1).setValue(x + 1, offset == 0 ? 0 : 1);
             }
         }
 
         @Override
         public boolean isLabelTrue(int i) throws PrismException {
-            boolean containsOne = false;
+            switch (i) {
+                // "goal"
+                case 0:
+                    boolean containsOne = false;
 
-            for (int[] ints : scpec) {
-                if (Arrays.equals(ints, responses)) {
-                    containsOne = true;
-                    break;
-                }
+                    for (int[] ints : scpec) {
+                        if (Arrays.equals(ints, responses)) {
+                            containsOne = true;
+                            break;
+                        }
+                    }
+
+                    // If we traversed the whole tree and went through the path of the confirmation, then there is a desired state
+                    return containsOne;
+                // "end"
+                case 1:
+                    return (x == n);
             }
-
-            // If we traversed the whole tree and went through the path of the confirmation, then there is a desired state
-            return containsOne;
+            // Should never happen
+            return false;
         }
 
         // Methods for RewardGenerator interface (reward info stored separately from ModelInfo/ModelGenerator)
@@ -260,19 +294,24 @@ public class DTMCCNFChecker {
         public double getStateReward(int r, State state) throws PrismException {
             // r will only ever be 0 (because there is one reward structure)
             // We assume it assigns 1 to all states.
-            return 1.0;
+            return 0.0;
         }
 
         @Override
         public double getStateActionReward(int r, State state, Object action) throws PrismException {
             // No action rewards
-            return 0.0;
+            int[] responsesForReward = new int[n];
+            for (int i = 0; i < n; i++) {
+                responsesForReward[i] = (Integer) state.varValues[i + 1];
+            }
+
+            if (Arrays.equals(responsesForReward, new int[]{-1, -1, -1}) ||
+                    Arrays.equals(responsesForReward, new int[]{1, -1, -1}) ||
+                    Arrays.equals(responsesForReward, new int[]{1, 1, -1}) ||
+                    Arrays.equals(responsesForReward, new int[]{1, 1, 1}))
+                return 1.0;
+            else
+                return 0.0;
         }
-    }
-
-    class ConsensusState {
-        int stepsNum = 0;
-
-        List<String> acceptanceResponses = new ArrayList<>();
     }
 }

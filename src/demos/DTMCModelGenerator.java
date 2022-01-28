@@ -235,7 +235,6 @@ public class DTMCModelGenerator
 				// Self-loop
 				return target;
 			} else {
-				System.out.println("~~!: " + (offset == 0));
 				return target.setValue(0, offset == 0 ? x - 1 : x + 1);
 			}
 		}
