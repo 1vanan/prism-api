@@ -26,6 +26,10 @@ import java.util.List;
 
 public class DTMCCNFChecker {
     public static void main(String[] args) {
+        for (String s:
+                args) {
+            System.out.println(s);
+        }
         new DTMCCNFChecker().run();
     }
 
@@ -45,6 +49,7 @@ public class DTMCCNFChecker {
             List<List<String>> literals = new ArrayList<>();
 
             List<int[]> spec = new ArrayList<>();
+            spec.add(new int[]{1, 1, 0});
             spec.add(new int[]{1, 1, 1});
 
             // List of probabilities for each organization. Goes in the same order
@@ -60,7 +65,7 @@ public class DTMCCNFChecker {
 
             // Then do some model checking and print the result
             String[] props = new String[]{
-                    "P=?[F \"end\"]"
+                    "P=?[F \"goal\"]"
             };
             for (String prop : props) {
                 System.out.println(prop + ":");
@@ -143,7 +148,7 @@ public class DTMCCNFChecker {
 
         @Override
         public List<String> getLabelNames() {
-            return Arrays.asList("end");
+            return Arrays.asList("goal");
         }
 
         // Methods for ModelGenerator interface (rather than superclass ModelInfo)
@@ -238,7 +243,7 @@ public class DTMCCNFChecker {
             }
 
             // If we traversed the whole tree and went through the path of the confirmation, then there is a desired state
-            return (x == n && containsOne);
+            return containsOne;
         }
 
         // Methods for RewardGenerator interface (reward info stored separately from ModelInfo/ModelGenerator)
