@@ -56,7 +56,7 @@ public class DTMCCNFChecker {
 
             List<int[]> backwards = new ArrayList<>();
             backwards.add(new int[]{1, -1, -1});
-//            backwards.add(new int[]{1, 1, -1});
+//            backwards.add(new int[]{-1, -1, -1});
 //            backwards.add(new int[]{1, 0, -1});
 
             // List of acceptance probabilities for each organization.
@@ -292,26 +292,29 @@ public class DTMCCNFChecker {
 
         @Override
         public double getStateReward(int r, State state) throws PrismException {
-            // r will only ever be 0 (because there is one reward structure)
-            // We assume it assigns 1 to all states.
-            return 0.0;
-        }
-
-        @Override
-        public double getStateActionReward(int r, State state, Object action) throws PrismException {
             // No action rewards
             int[] responsesForReward = new int[n];
             for (int i = 0; i < n; i++) {
                 responsesForReward[i] = (Integer) state.varValues[i + 1];
             }
 
-            if (Arrays.equals(responsesForReward, new int[]{-1, -1, -1}) ||
-                    Arrays.equals(responsesForReward, new int[]{1, -1, -1}) ||
-                    Arrays.equals(responsesForReward, new int[]{1, 1, -1}) ||
-                    Arrays.equals(responsesForReward, new int[]{1, 1, 1}))
-                return 1.0;
-            else
+            if (
+                    Arrays.equals(responsesForReward, new int[]{-1, -1, -1})) {
+                return 1;
+
+            } else if (Arrays.equals(responsesForReward, new int[]{1, -1, -1})) {
+                return 2;
+            } else if (Arrays.equals(responsesForReward, new int[]{1, 1, -1})) {
+                return 4;
+            } else {
                 return 0.0;
+
+            }
+        }
+
+        @Override
+        public double getStateActionReward(int r, State state, Object action) throws PrismException {
+            return 0.0;
         }
     }
 }
